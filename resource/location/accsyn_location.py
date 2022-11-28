@@ -124,7 +124,14 @@ def configure_location(ftrack_session, event):
         },
     )
 
-    location.accessor = AccsynAccessor(accsyn_session, prefix=USER_DISK_PREFIX)
+    location.accessor = AccsynAccessor(
+        location['id'],
+        share['code'],
+        client,
+        ftrack_session,
+        accsyn_session,
+        prefix=USER_DISK_PREFIX,
+    )
     location.structure = _standard.StandardStructure()
     location.priority = 1 - sys.maxsize
 
@@ -135,14 +142,23 @@ def configure_location(ftrack_session, event):
     )
 
 
+#
+# def event_debug(event):
+#     print('EVENT DEBUG: {}'.format(str(event)))
+
+
 def register(api_object, **kw):
     '''Register location with *session*.'''
     if not isinstance(api_object, ftrack_api.Session):
         return
 
     logger.info('Registering accsyn location')
-
     api_object.event_hub.subscribe(
         'topic=ftrack.api.session.configure-location',
         functools.partial(configure_location, api_object),
     )
+
+    # api_object.event_hub.subscribe(
+    #     'topic=*',
+    #     event_debug,
+    # )
