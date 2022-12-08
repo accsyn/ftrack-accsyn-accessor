@@ -20,8 +20,6 @@ for key in ['ACCSYN_DOMAIN', 'ACCSYN_API_USER', 'ACCSYN_API_KEY']:
 
 # TODO: Verify email
 
-import accsyn_api
-
 
 def appendPath(path, key, environment):
     '''Append *path* to *key* in *environment*.'''

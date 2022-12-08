@@ -8,8 +8,6 @@ import platform
 import re
 import uuid
 
-import accsyn_api
-
 import ftrack_api
 import ftrack_api.structure.standard as _standard
 
@@ -28,6 +26,7 @@ def configure_location(ftrack_session, event):
 
     sys.path.append(dependencies_directory)
 
+    import accsyn_api
     from ftrack_accsyn_accessor.accsyn import AccsynAccessor
 
     accsyn_session = accsyn_api.Session(dev=True)
@@ -111,18 +110,22 @@ def configure_location(ftrack_session, event):
         ftrack_session.api_user, platform.node()
     )
 
-    location = ftrack_session.ensure(
-        'Location',
-        {
-            'name': USER_LOCATION_NAME,
-            'description': 'accsyn location for user '
-            ': {}, on host {}, with path: {}'.format(
-                ftrack_session.api_user,
-                platform.node(),
-                os.path.abspath(USER_DISK_PREFIX),
-            ),
-        },
-    )
+    location = ftrack_session.query(
+        'Location where name="{}"'.format(USER_LOCATION_NAME)
+    ).first()
+    if not location:
+        location = ftrack_session.ensure(
+            'Location',
+            {
+                'name': USER_LOCATION_NAME,
+                'description': 'accsyn location for user '
+                ': {}, on host {}, with path: {}'.format(
+                    ftrack_session.api_user,
+                    platform.node(),
+                    os.path.abspath(USER_DISK_PREFIX),
+                ),
+            },
+        )
 
     location.accessor = AccsynAccessor(
         location['id'],
@@ -142,7 +145,6 @@ def configure_location(ftrack_session, event):
     )
 
 
-#
 # def event_debug(event):
 #     print('EVENT DEBUG: {}'.format(str(event)))
 

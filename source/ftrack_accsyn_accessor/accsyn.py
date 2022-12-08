@@ -15,6 +15,8 @@ from ftrack_api.exception import (
     AccessorParentResourceNotFoundError,
 )
 
+from ftrack_accsyn_accessor._version import __version__
+
 logger = logging.getLogger('ftrack_accsyn_accessor.AccsynAccessor')
 
 #
@@ -92,16 +94,24 @@ class AccsynAccessor(DiskAccessor):
         self._ftrack_session = ftrack_session
         self._accsyn_session = accsyn_session
 
+        # Register location with client
+        logger.info('Registering accsyn client with location')
+        self._accsyn_session.integration(
+            'ftrack',
+            'client_register',
+            {'client': self.client['id'], 'location': self.location_id},
+        )
+
         logger.info('Registering to "ftrack.location.component-added" events')
         ftrack_session.event_hub.subscribe(
-            'topic=ftrack.location.component-added and location_id={}'.format(
+            'topic=ftrack.location.component-added and data.location_id={}'.format(
                 location_id
             ),
             self.component_added,
         )
         logger.info(
-            'Initialised accsyn accessor (location: {}, share: {}, client: {})'.format(
-                self._location_id, self._share, self._client
+            'Initialised accsyn accessor v{} (location: {}, share: {}, client: {})'.format(
+                __version__, self._location_id, self._share, self._client
             )
         )
 
@@ -113,97 +123,107 @@ class AccsynAccessor(DiskAccessor):
         :return:
         '''
 
-        # Fetch component and path
-        location = self.ftrack_session.query(
-            'Location where id={}'.format(self.location_id)
-        ).one()
-        component = self.ftrack_session.query(
-            'Component where id={}'.format(event['data']['component_id'])
-        ).one()
-        resource_identifier = location.get_resource_identifier(component)
+        try:
+            # Fetch component and path
+            location = self.ftrack_session.query(
+                'Location where id={}'.format(self.location_id)
+            ).one()
+            component = self.ftrack_session.query(
+                'Component where id={}'.format(event['data']['component_id'])
+            ).one()
+            resource_identifier = location.get_resource_identifier(component)
 
-        logger.info(
-            'File "{}" written to local mapped share "{}" @ location "{}", syncing with accsyn'.format(
-                resource_identifier, self.share, self.location_id
-            )
-        )
-
-        location = self.ftrack_session.query(
-            'Location where id={}'.format(self.location_id)
-        ).one()
-        component_id = '11e5369c-ffb4-4bfd-8a4d-998d283da13f'
-
-        # Query the destination location for upload
-        upload_location_data = self.accsyn_session.get_setting(
-            name='upload_location',
-            integration='ftrack',
-            data={'location_id': self.location_id},
-        )
-
-        if upload_location_data is None:
-            # Nothing to sync
-            logger.warning(
-                'Retrieved no remote location from accsyn, skipping sync.'
-            )
-            return
-
-        upload_ident = self.accsyn_session.get_setting(
-            name='upload_ident',
-            integration='ftrack',
-            data={'location_id': self.location_id},
-        )
-        # Locate sync job
-        sync_job_name = '{} > {} ftrack sync {}'.format(
-            location['name'],
-            upload_location_data['name'],
-            datetime.datetime.now().strftime('%y.%m.%d'),
-        )
-
-        sync_job = self.accsyn_session.find_one(
-            'Job where code="{}"'.format(sync_job_name)
-        )
-
-        task_data = {
-            'source': 'client={}:share={}/{}'.format(
-                self.client['id'], self.share, resource_identifier
-            ),
-            'destination': upload_ident,
-            'metadata': {'ftrack_component_id': component_id},
-        }
-
-        if sync_job:
             logger.info(
-                'Re-using existing sync job: "{}"'.format(sync_job_name)
+                'Component {} file "{}" written to local mapped share "{}" @ location "{}", syncing with accsyn'.format(
+                    component['id'],
+                    resource_identifier,
+                    self.share,
+                    self.location_id,
+                )
             )
-            logger.debug('accsyn task spec: {}'.format(task_data))
-            response = self.accsyn_session.create(
-                'task', {'tasks': [task_data]}, sync_job['id']
+
+            location = self.ftrack_session.query(
+                'Location where id={}'.format(self.location_id)
+            ).one()
+
+            # Query the destination location for upload
+            upload_location_data = self.accsyn_session.get_setting(
+                name='upload_location',
+                integration='ftrack',
+                data={'location_id': self.location_id},
             )
-            logger.info('Successfully added 1 sync task: {}'.format(response))
-        else:
-            logger.info('Creating new sync job: "{}"'.format(sync_job_name))
-            job_data = {
-                'code': sync_job_name,
-                'tasks': [task_data],
-                'mirror': True,
-                'settings': {'integration': 'ftrack'},
-                'metadata': {
-                    'ftrack_workspace': self.ftrack_session.server_url,
-                    'ftrack_source_location_id': location['id'],
-                    'ftrack_source_location_name': location['name'],
-                    'ftrack_destination_location_id': upload_location_data[
-                        'id'
-                    ],
-                    'ftrack_destination_location_name': upload_location_data[
-                        'name'
-                    ],
-                },
+
+            if upload_location_data is None:
+                # Nothing to sync
+                logger.warning(
+                    'Retrieved no remote location from accsyn, skipping sync.'
+                )
+                return
+
+            upload_ident = self.accsyn_session.get_setting(
+                name='upload_ident',
+                integration='ftrack',
+                data={'location_id': self.location_id},
+            )
+            # Locate sync job
+            sync_job_name = '{} > {} ftrack sync {}'.format(
+                location['name'],
+                upload_location_data['name'],
+                datetime.datetime.now().strftime('%y.%m.%d'),
+            )
+
+            sync_job = self.accsyn_session.find_one(
+                'Job where code="{}"'.format(sync_job_name)
+            )
+
+            task_data = {
+                'source': 'client={}:share={}/{}'.format(
+                    self.client['id'], self.share, resource_identifier
+                ),
+                'destination': upload_ident,
+                'metadata': {'ftrack_component_id': component['id']},
             }
-            logger.debug('accsyn job spec: {}'.format(job_data))
-            response = self.accsyn_session.create('job', job_data)
-            logger.info(
-                'Successfully created a new sync job: {}'.format(response)
-            )
+
+            if sync_job:
+                logger.info(
+                    'Re-using existing sync job: "{}"'.format(sync_job_name)
+                )
+                logger.debug('accsyn task spec: {}'.format(task_data))
+                response = self.accsyn_session.create(
+                    'task', {'tasks': [task_data]}, sync_job['id']
+                )
+                logger.info(
+                    'Successfully added 1 sync task: {}'.format(response)
+                )
+            else:
+                logger.info(
+                    'Creating new sync job: "{}"'.format(sync_job_name)
+                )
+                job_data = {
+                    'code': sync_job_name,
+                    'tasks': [task_data],
+                    'mirror': True,
+                    'settings': {'integration': 'ftrack'},
+                    'metadata': {
+                        'ftrack_workspace': self.ftrack_session.server_url,
+                        'ftrack_source_location_id': location['id'],
+                        'ftrack_source_location_name': location['name'],
+                        'ftrack_destination_location_id': upload_location_data[
+                            'id'
+                        ],
+                        'ftrack_destination_location_name': upload_location_data[
+                            'name'
+                        ],
+                        'ftrack_username': self.ftrack_session.api_user,
+                    },
+                }
+                logger.debug('accsyn job spec: {}'.format(job_data))
+                response = self.accsyn_session.create('job', job_data)
+                logger.info(
+                    'Successfully created a new sync job: {}'.format(response)
+                )
+        except Exception as e:
+            logger.exception(e)
 
     #
     # def open_(self, resource_identifier, mode="rb"):
