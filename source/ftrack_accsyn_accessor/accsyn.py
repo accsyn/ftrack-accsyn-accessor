@@ -1,47 +1,14 @@
 # :coding: utf-8
-# :copyright: Copyright (c) 2014-2022 ftrack
+# :copyright: Copyright (c) 2022 accsyn/HDR AB
 import os
 import logging
 import datetime
 
 from ftrack_api.accessor.disk import DiskAccessor
-from ftrack_api.data import FileWrapper
-from ftrack_api.exception import (
-    AccessorOperationFailedError,
-    AccessorUnsupportedOperationError,
-    AccessorResourceInvalidError,
-    AccessorResourceNotFoundError,
-    AccessorContainerNotEmptyError,
-    AccessorParentResourceNotFoundError,
-)
 
 from ftrack_accsyn_accessor._version import __version__
 
 logger = logging.getLogger('ftrack_accsyn_accessor.AccsynAccessor')
-
-#
-# class AccsynFileWrapper(FileWrapper):
-#
-#
-#
-#     def __init__(self, file, location_id, share, path, client, ftrack_session, accsyn_session):
-#         self._location_id = location_id
-#         self._share = share
-#         self._path = path
-#         self._client = client
-#         self._ftrack_session = ftrack_session
-#         self._accsyn_session = accsyn_session
-#         super(AccsynFileWrapper, self).__init__(file)
-#
-#     def close(self):
-#         '''(Override) The file have been written locally, initiate accsyn transfer.'''
-#         logger.info('File "{}" written to local mapped share "{}", syncing with accsyn'.format(self.path, self.share))
-#
-#         # Find out upload location
-#         upload_location = self.accsyn_session.get_setting(name='upload_location', integration='ftrack',
-#                                               data={'location_id': self.location_id})
-#
-#         # TODO: Locate sync job
 
 
 class AccsynAccessor(DiskAccessor):
@@ -80,13 +47,7 @@ class AccsynAccessor(DiskAccessor):
         accsyn_session,
         prefix=None,
     ):
-        """Initialise location accessor.
-
-        Uses the server credentials specified by *host*, *password*, *port* and *password*
-        to create a sftp connection.
-
-        If specified, *folder* indicates the subfolder where assets are stored
-        """
+        """Initialise the accsyn accessor, at location *location_id*, with accsyn *share* and *client*."""
         super(AccsynAccessor, self).__init__(prefix=prefix)
         self._location_id = location_id
         self._share = share
@@ -117,6 +78,10 @@ class AccsynAccessor(DiskAccessor):
 
     def component_added(self, event):
         '''
+        Called when a component is added to a location.
+
+        Example event:
+
         <Event {'id': '98d4871190ef4d5ba6b4bf53efdca22d', 'data': {'component_id': '61e29ad4-4f4e-4f20-9171-05fa075baa79', 'location_id': 'c26a5ce7-ca32-452a-8c04-4750246a72da'}, 'topic': 'ftrack.location.component-added', 'sent': None, 'source': {'id': '84e5abd6d3c94c59979e70c9e4a76ed4', 'user': {'username': 'henrik.norin@ftrack.com'}}, 'target': '', 'in_reply_to_event': None}>
 
         :param event:
@@ -224,16 +189,3 @@ class AccsynAccessor(DiskAccessor):
                 )
         except Exception as e:
             logger.exception(e)
-
-    #
-    # def open_(self, resource_identifier, mode="rb"):
-    #     """(Override)"""
-    #     if self.is_container(resource_identifier):
-    #         raise AccessorResourceInvalidError(
-    #             resource_identifier=resource_identifier,
-    #             message="Cannot open a directory: {resource_identifier}",
-    #         )
-    #     return AccsynFileWrapper(
-    #         super(AccsynAccessor, self).open(resource_identifier, mode=mode),
-    #         self._location_id, self._share, self.get_filesystem_path(resource_identifier), self._client, self._ftrack_session, self._accsyn_session
-    #     )

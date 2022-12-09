@@ -1,5 +1,5 @@
 # :coding: utf-8
-# :copyright: Copyright (c) 2015 ftrack
+# :copyright: Copyright (c) 2022 accsyn/HDR AB
 import os
 import logging
 import logging.config

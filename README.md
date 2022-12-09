@@ -1,6 +1,6 @@
 # ftrack-accsyn-accessor
 
-A ftrack API location accessor enabling background file transfers with accsyn file synchronisation tool.
+A ftrack API location accessor enabling background file transfers with accsyn file synchronization tool.
 
 About
 -----
@@ -14,10 +14,10 @@ accsyn is a file and workflow metadata synchronisation tool leveraging a RSYNC-l
 ftrack is the widely acknowledged web based media project management and review tool for the creative industry. 
 For more information: https://ftrack.com
 
-The accessor enables the following feature set:
+The accessor enables the following feature **set**:
 
 * Eliminates the need for a separate file transfer tool such as FTP, Dropbox, WeTransfer, etc.
-* Makes sure all published files are transfered securely by fastest means possible to the on-premise/cloud storage.
+* Makes sure all published files are transferred securely by fastest means possible to the on-premise/cloud storage.
 * Allows for a single point of access to all published files, regardless of where they are stored.
 * Integrates with ftrack's existing Storage scenario or other storage/location solutions.
 * Leverages the existing ftrack Location system, for more information: https://www.ftrack.com/en/intro-to-locations-webinar
@@ -89,6 +89,12 @@ Then launch the API session:
 ### New
 
 * Initial release
+
+## [0.3.2] - 2022-12-09
+
+### Change
+
+* Code cleanup, removed unused code and added code documentation
 
 
 # License

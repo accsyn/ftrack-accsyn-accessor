@@ -1,5 +1,5 @@
 # :coding: utf-8
-# :copyright: Copyright (c) 2014-2022 accsyn/HDR AB
+# :copyright: Copyright (c) 2022 accsyn/HDR AB
 import os
 import sys
 import functools
@@ -11,12 +11,11 @@ import uuid
 import ftrack_api
 import ftrack_api.structure.standard as _standard
 
-
 logger = logging.getLogger('ftrack_accsyn_location')
 
 
 def configure_location(ftrack_session, event):
-    '''Setup accsyn location.'''
+    '''Setup the accsyn user staging location.'''
 
     logger.info('Configuring accsyn location, event: {}'.format(event))
 
@@ -33,7 +32,6 @@ def configure_location(ftrack_session, event):
 
     # Determine machine ident
     hostname = platform.node()
-    username = ftrack_session.api_user
     mac_address = (
         ':'.join(re.findall('..', '%012x' % uuid.getnode()))
     ).upper()
@@ -81,7 +79,6 @@ def configure_location(ftrack_session, event):
     logger.info(
         'Got local accsyn client: {}({})'.format(client['code'], client['id'])
     )
-    logger.debug('client debug: {}'.format(client))
 
     # Evaluate the disk prefix from client mapped root share path
     share = accsyn_session.find_one('Share where default=true')
@@ -89,7 +86,6 @@ def configure_location(ftrack_session, event):
     logger.info(
         'Got accsyn root share: {}({})'.format(share['code'], share['id'])
     )
-    logger.debug('share debug: {}'.format(share))
 
     # Expect environment variable set
     share_env = 'ACCSYN_{}_PATH'.format(share['code'].upper())
@@ -139,14 +135,10 @@ def configure_location(ftrack_session, event):
     location.priority = 1 - sys.maxsize
 
     logger.warning(
-        'Registering Using location {0} @ {1} with priority {2}'.format(
+        'Registering accsyn user staging location {0} @ {1} with priority {2}'.format(
             USER_LOCATION_NAME, USER_DISK_PREFIX, location.priority
         )
     )
-
-
-# def event_debug(event):
-#     print('EVENT DEBUG: {}'.format(str(event)))
 
 
 def register(api_object, **kw):
@@ -159,8 +151,3 @@ def register(api_object, **kw):
         'topic=ftrack.api.session.configure-location',
         functools.partial(configure_location, api_object),
     )
-
-    # api_object.event_hub.subscribe(
-    #     'topic=*',
-    #     event_debug,
-    # )

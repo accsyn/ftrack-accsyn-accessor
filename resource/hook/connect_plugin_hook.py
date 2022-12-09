@@ -9,6 +9,8 @@ import ftrack_api
 
 logger = logging.getLogger('ftrack_accsyn_location_hook')
 
+# Make sure hook can load the location plugin.
+
 LOCATION_DIRECTORY = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', 'location')
 )
@@ -59,9 +61,6 @@ def register(api_object, **kw):
     import accsyn_location
 
     accsyn_location.register(api_object)
-
-    # import cloud_location
-    # cloud_location.register(api_object)
 
     # Location will be available from within the dcc applications.
     api_object.event_hub.subscribe(
